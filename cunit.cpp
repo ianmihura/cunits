@@ -18,8 +18,9 @@ struct Length {
 struct Temperature {
   static uint8_t const ID = 2;
 };
-// struct Time { static uint8_t const ID = 3; };
-// struct Weight { static uint8_t const ID = 4; };
+struct Time {
+  static uint8_t const ID = 3;
+};
 
 template <typename Dimension, typename Ratio> struct UnitSuffix {
   static constexpr const char *value = "<unit>";
@@ -51,6 +52,18 @@ template <> struct UnitSuffix<Temperature, std::ratio<1>> {
 template <> struct UnitSuffix<Temperature, std::ratio<5, 9>> {
   static constexpr const char *value = "°F";
 };
+template <> struct UnitSuffix<Time, std::ratio<1>> {
+  static constexpr const char *value = "'";
+};
+template <> struct UnitSuffix<Time, std::ratio<1, 60>> {
+  static constexpr const char *value = "''";
+};
+template <> struct UnitSuffix<Time, std::ratio<60>> {
+  static constexpr const char *value = "°";
+};
+template <> struct UnitSuffix<Time, std::ratio<60 * 24>> {
+  static constexpr const char *value = "d";
+};
 
 template <typename Dimension_, typename Ratio = std::ratio<1>,
           int OffsetNum = 1, int OffsetDen = 1>
@@ -81,6 +94,10 @@ using Feet = Quantity<Length, std::ratio<3>>;
 using Miles = Quantity<Length, std::ratio<1609>>;
 using Celsius = Quantity<Temperature, std::ratio<1>>;
 using Fahrenheit = Quantity<Temperature, std::ratio<5, 9>, 32>;
+using Minutes = Quantity<Time, std::ratio<1>>;
+using Seconds = Quantity<Time, std::ratio<1, 60>>;
+using Hours = Quantity<Time, std::ratio<60>>;
+using Days = Quantity<Time, std::ratio<60 * 24>>;
 
 Meters operator""_m(long double val) {
   return Meters(static_cast<double>(val));
@@ -105,6 +122,14 @@ Celsius operator""_C(long double val) {
 Fahrenheit operator""_F(long double val) {
   return Fahrenheit(static_cast<double>(val));
 }
+Minutes operator""_min(long double val) {
+  return Minutes(static_cast<double>(val));
+};
+Seconds operator""_sec(long double val) {
+  return Seconds(static_cast<double>(val));
+};
+Hours operator""_h(long double val) { return Hours(static_cast<double>(val)); };
+Days operator""_day(long double val) { return Days(static_cast<double>(val)); };
 
 template <typename From, typename To> To unit_cast(From q) {
   if (To::Dimension::ID != From::Dimension::ID) {
@@ -189,6 +214,22 @@ int main() {
   printf("--- testing temperature cast\n");
   unit_cast<Celsius, Fahrenheit>(temp_c).PPrint();
   unit_cast<Fahrenheit, Celsius>(temp_f).PPrint();
+  printf("---\n");
+
+  printf("--- testing time assign and operators\n");
+  auto time_1 = 48.5_min;
+  auto time_2 = 120.0_sec;
+  auto time_3 = 3.5_h;
+  auto time_4 = 0.1_day;
+  time_1.PPrint();
+  time_2.PPrint();
+  time_3.PPrint();
+  time_4.PPrint();
+  printf("---\n");
+
+  printf("--- testing time cast\n");
+  unit_cast<Seconds, Minutes>(time_2).PPrint();
+  unit_cast<Days, Minutes>(time_4).PPrint();
   printf("---\n");
 
   printf("--- testing cast fail\n");
