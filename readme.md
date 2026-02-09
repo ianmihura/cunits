@@ -1,98 +1,55 @@
-# Cunits: Compile-Time Unit Conversion
+# CUnit: C++ Unit Conversion Library
 
-**Cunits** is a header-only C++ library for dimensional analysis. It uses template metaprogramming to ensure unit compatibility at compile time, eliminating runtime overhead and unit-mismatch errors.
-
----
+A lightweight, header-only C++ library for dimensional analysis and unit conversion. Using C++ templates and user-defined literals to provide type-safe operations on physical quantities.
 
 ## Features
 
-* **Zero Runtime Overhead**: All conversions and checks occur during compilation.
-* **Strong Typing**: Prevents nonsensical operations (e.g., adding meters to kilograms).
-* **Expressive Syntax**: Supports User-Defined Literals (UDLs) like `5.0_m`.
-* **Precision**: Uses `double` for exact conversion factors.
+- **Dimensional Safety**: Prevents mixing incompatible units (e.g., adding Temperature to Length) at runtime via exceptions.
+- **User-Defined Literals**: Intuitive syntax for defining quantities: `10.0_km`, `21.5_C`, etc.
+- **Automatic Conversion**: Perform arithmetic operations between different units of the same dimension seamlessly.
+- **Unit Casting**: Explicit conversion between units using `unit_cast<From, To>`.
+- **Supported Dimensions**:
+  - **Length**: `m`, `km`, `cm`, `mm`, `in`, `ft`, `mi`.
+  - **Temperature**: `Celsius` (°C), `Fahrenheit` (°F).
 
----
+## Usage Examples
 
-## Technical Architecture
-
-The library relies on three C++ pillars:
-
-1. **`std::ratio`**: Manages conversion factors as rational numbers.
-2. **Template Metaprogramming**: Validates types using SFINAE and Type Traits.
-3. **Strong Typing**: Wraps arithmetic types in unit-specific classes.
-
----
-
-## Usage
-
-### Basic Operations
-
-Define measurements using literals. The compiler prevents incompatible operations.
-
+### Basic Length Operations
 ```cpp
-auto distance = 10.0_m;
-auto time = 2.0_s;
+auto dist1 = 5.0_km;
+auto dist2 = 500.0_m;
 
-// Valid: Results in a new unit type (m/s)
-auto velocity = distance / time;
+auto sum = dist1 + dist2;       // Result is in Kilometers (5.50 km)
+auto diff = dist1 - dist2;      // Result is in Kilometers (4.50 km)
 
-// Compilation Error: Cannot add meters to seconds
-auto error = distance + time;
+dist1.PPrint();                 // Output: 5.00 km
+sum.PPrint();                   // Output: 5.50 km
 ```
 
-### Conversion
-
-Convert between compatible units (e.g., Length) while blocking incompatible ones.
-
+### Temperature Conversion
 ```cpp
-Meter m = 1.0_m;
-Foot f = m; // Automatic conversion via template operator
+auto temp_c = 21.5_C;
+auto temp_f = 77.0_F;
 
-Celsius temp = 25.0_C;
-Fahrenheit f_temp = temp; // Supported via specialized conversion traits
+// Automatic conversion in operations
+auto total = temp_c + temp_f;   // Converts Fahrenheit to Celsius then adds
+total.PPrint();                 // Output: 46.50 °C
+
+// Explicit casting
+auto converted = unit_cast<Celsius, Fahrenheit>(temp_c);
+converted.PPrint();             // Output: 70.70 °F
 ```
 
----
-
-## Implementation Details
-
-### Unit Class Template
-
-The core `Quantity` class template takes a `Dimension` tag and a `Ratio` (relative to a base unit).
+### Type Safety and Exceptions
+The library throws `IncompatilbeDimException` if you attempt to operate on or cast between different dimensions.
 
 ```cpp
-template <typename Dimension, typename Ratio>
-class Quantity {
-    double value_;
-public:
-    explicit constexpr Quantity(double v) : value_(v) {}
-    double value() const { return value_; }
-
-    // Conversion constructor for compatible dimensions
-    template <typename OtherRatio>
-    constexpr Quantity(const Quantity<Dimension, OtherRatio>& other)
-        : value_(other.value() * Ratio::num / Ratio::den) {}
-};
-
-```
-
-### User-Defined Literals
-
-UDLs provide a clean interface for initializing quantities.
-
-```cpp
-constexpr Quantity<Length, std::ratio<1>> operator"" _m(long double d) {
-    return Quantity<Length, std::ratio<1>>(static_cast<double>(d));
+try {
+    auto result = 10.0_m + 32.0_F; // Throws IncompatilbeDimException
+} catch (const IncompatilbeDimException& ex) {
+    printf("Error: %s\n", ex.what());
 }
-
-constexpr Quantity<Length, std::ratio<3048, 10000>> operator"" _ft(long double d) {
-    return Quantity<Length, std::ratio<3048, 10000>>(static_cast<double>(d));
-}
-
 ```
 
----
-
-## Installation
-
-Copy the `Cunits.hpp` header into your project. Requires a C++17 compatible compiler.
+## How to use
+Simply include `cunit.cpp` (or rename to `.hpp` for header-only usage) in your project. It requires C++11 or later for `std::ratio` and user-defined literals.
