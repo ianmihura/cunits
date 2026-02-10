@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// TODO create a shell tool that's a quit converter
+// 12.43minute + 3.1hour + 43second + 0.1day = minutes
+// accept float and int
+// argparse
+
 class IncompatilbeDimException : public std::exception {
 private:
   const char *message;
@@ -53,13 +58,19 @@ template <> struct UnitSuffix<Temperature, std::ratio<5, 9>> {
   static constexpr const char *value = "°F";
 };
 template <> struct UnitSuffix<Time, std::ratio<1>> {
-  static constexpr const char *value = "'";
+  static constexpr const char *value = "min";
+};
+template <> struct UnitSuffix<Time, std::ratio<1, 60 * 1000>> {
+  static constexpr const char *value = "ms";
+};
+template <> struct UnitSuffix<Time, std::ratio<1, 60 * 1000 * 1000>> {
+  static constexpr const char *value = "µs";
 };
 template <> struct UnitSuffix<Time, std::ratio<1, 60>> {
-  static constexpr const char *value = "''";
+  static constexpr const char *value = "s";
 };
 template <> struct UnitSuffix<Time, std::ratio<60>> {
-  static constexpr const char *value = "°";
+  static constexpr const char *value = "hs";
 };
 template <> struct UnitSuffix<Time, std::ratio<60 * 24>> {
   static constexpr const char *value = "d";
@@ -70,6 +81,7 @@ template <typename Dimension_, typename Ratio = std::ratio<1>,
 struct Quantity {
   double value;
   explicit Quantity(double val) : value(val) {}
+  explicit Quantity(int val) : value(val) {}
   static constexpr const char *suffix = UnitSuffix<Dimension_, Ratio>::value;
 
   using Dimension = Dimension_;
@@ -96,40 +108,34 @@ using Celsius = Quantity<Temperature, std::ratio<1>>;
 using Fahrenheit = Quantity<Temperature, std::ratio<5, 9>, 32>;
 using Minutes = Quantity<Time, std::ratio<1>>;
 using Seconds = Quantity<Time, std::ratio<1, 60>>;
+using Mili = Quantity<Time, std::ratio<1, 60 * 1000>>;
+using Micro = Quantity<Time, std::ratio<1, 60 * 1000 * 1000>>;
 using Hours = Quantity<Time, std::ratio<60>>;
 using Days = Quantity<Time, std::ratio<60 * 24>>;
 
-Meters operator""_m(long double val) {
-  return Meters(static_cast<double>(val));
-}
-Kilometers operator""_km(long double val) {
-  return Kilometers(static_cast<double>(val));
-}
-Centimeters operator""_cm(long double val) {
-  return Centimeters(static_cast<double>(val));
-}
-Millimeters operator""_mm(long double val) {
-  return Millimeters(static_cast<double>(val));
-}
-Inches operator""_in(long double val) {
-  return Inches(static_cast<double>(val));
-}
-Feet operator""_ft(long double val) { return Feet(static_cast<double>(val)); }
-Miles operator""_mi(long double val) { return Miles(static_cast<double>(val)); }
-Celsius operator""_C(long double val) {
-  return Celsius(static_cast<double>(val));
-}
-Fahrenheit operator""_F(long double val) {
-  return Fahrenheit(static_cast<double>(val));
-}
-Minutes operator""_min(long double val) {
-  return Minutes(static_cast<double>(val));
-};
-Seconds operator""_sec(long double val) {
-  return Seconds(static_cast<double>(val));
-};
-Hours operator""_h(long double val) { return Hours(static_cast<double>(val)); };
-Days operator""_day(long double val) { return Days(static_cast<double>(val)); };
+#define GENERATE_UNIT_LITERAL(Unit, Suffix)                                    \
+  Unit operator""_##Suffix(long double val) {                                  \
+    return Unit(static_cast<double>(val));                                     \
+  }                                                                            \
+  Unit operator""_##Suffix(unsigned long long val) {                           \
+    return Unit(static_cast<double>(val));                                     \
+  }
+
+GENERATE_UNIT_LITERAL(Meters, m)
+GENERATE_UNIT_LITERAL(Kilometers, km)
+GENERATE_UNIT_LITERAL(Centimeters, cm)
+GENERATE_UNIT_LITERAL(Millimeters, mm)
+GENERATE_UNIT_LITERAL(Inches, in)
+GENERATE_UNIT_LITERAL(Feet, ft)
+GENERATE_UNIT_LITERAL(Miles, mi)
+GENERATE_UNIT_LITERAL(Celsius, C)
+GENERATE_UNIT_LITERAL(Fahrenheit, F)
+GENERATE_UNIT_LITERAL(Minutes, min)
+GENERATE_UNIT_LITERAL(Seconds, s)
+GENERATE_UNIT_LITERAL(Mili, ms)
+GENERATE_UNIT_LITERAL(Micro, mus)
+GENERATE_UNIT_LITERAL(Hours, h)
+GENERATE_UNIT_LITERAL(Days, day)
 
 template <typename From, typename To> To unit_cast(From q) {
   if (To::Dimension::ID != From::Dimension::ID) {
@@ -161,29 +167,21 @@ auto operator-(LeftT left, RightT right) {
   auto converted_right = unit_cast<RightT, LeftT>(right);
   return LeftT(left.value - converted_right.value);
 }
-template <typename LeftT, typename RightT>
-auto operator*(LeftT left, RightT right) {
-  auto converted_right = unit_cast<RightT, LeftT>(right);
-  return LeftT(left.value * converted_right.value);
-}
-template <typename LeftT, typename RightT>
-auto operator/(LeftT left, RightT right) {
-  auto converted_right = unit_cast<RightT, LeftT>(right);
-  return LeftT(left.value / converted_right.value);
-}
-
-// template <typename Dim, typename R1, typename R2>
-// auto operator-(Quantity<Dim, R1> left, Quantity<Dim, R2> right) {
-//     using Factor = std::ratio_divide<R2, R1>;
-//     double converted_right = right.value * Factor::num / Factor::den;
-
-//     return Quantity<Dim, R1>(left.value - converted_right);
+// template <typename LeftT, typename RightT>
+// auto operator*(LeftT left, RightT right) {
+//   auto converted_right = unit_cast<RightT, LeftT>(right);
+//   return LeftT(left.value * converted_right.value);
+// }
+// template <typename LeftT, typename RightT>
+// auto operator/(LeftT left, RightT right) {
+//   auto converted_right = unit_cast<RightT, LeftT>(right);
+//   return LeftT(left.value / converted_right.value);
 // }
 
 int main() {
   printf("--- testing length assign and operation\n");
-  auto dist1 = 5.0_km;
-  auto dist2 = 500.0_m;
+  auto dist1 = 5_km;
+  auto dist2 = 500_m;
   auto dist3 = dist1 - dist2;
   auto dist4 = dist1 + dist2;
 
@@ -197,18 +195,18 @@ int main() {
   unit_cast<Kilometers, Meters>(dist1).PPrint();
   unit_cast<Kilometers, Millimeters>(dist1).PPrint();
   unit_cast<Meters, Millimeters>(dist2).PPrint();
-  unit_cast<Meters, Inches>(1.0_m).PPrint();
-  unit_cast<Meters, Feet>(1.0_m).PPrint();
-  unit_cast<Meters, Miles>(1.0_m).PPrint();
+  unit_cast<Meters, Inches>(1_m).PPrint();
+  unit_cast<Meters, Feet>(1_m).PPrint();
+  unit_cast<Meters, Miles>(1_m).PPrint();
   printf("---\n");
 
   printf("--- testing temperature assign and operators\n");
   auto temp_c = 21.5_C;
-  auto temp_f = 77.0_F;
+  auto temp_f = 77_F;
   temp_c.PPrint();
   temp_f.PPrint();
-  (21.5_C + 77.0_F).PPrint();
-  (77.0_F + 21.5_C).PPrint();
+  (21.5_C + 77_F).PPrint();
+  (77_F + 21.5_C).PPrint();
   printf("---\n");
 
   printf("--- testing temperature cast\n");
@@ -218,7 +216,7 @@ int main() {
 
   printf("--- testing time assign and operators\n");
   auto time_1 = 48.5_min;
-  auto time_2 = 120.0_sec;
+  auto time_2 = 120_s;
   auto time_3 = 3.5_h;
   auto time_4 = 0.1_day;
   time_1.PPrint();
@@ -244,6 +242,8 @@ int main() {
     printf("ok\n");
   }
   printf("---\n");
+
+  (3_day).PPrint();
 
   return 0;
 }
