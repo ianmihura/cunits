@@ -3,11 +3,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-// TODO create a shell tool that's a quit converter
-// 12.43minute + 3.1hour + 43second + 0.1day = minutes
-// accept float and int
-// argparse
-
 class IncompatilbeDimException : public std::exception {
 private:
   const char *message;
